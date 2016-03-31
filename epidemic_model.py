@@ -1,41 +1,66 @@
-# %matplotlib inline
-
 import matplotlib
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.mlab import griddata
 import matplotlib.mlab as mlab
 
+import math
+import random
+import time
 
+# Scaling
+N = 10000
 # Model parameters
-nu = 1
-beta = 0.1
+mu = 0.1
 gamma = 10
+beta = 0.01
+# Fix point
+xstar = gamma / beta
+ystar = mu / beta
+# Initial values
+x0 = N
+y0 = N
 
-# Plot conserve quantity of the Lotka--Volterra model
 
-delta = 0.025
-x = np.arange(-3.0, 3.0, delta)
-y = np.arange(-2.0, 2.0, delta)
-X, Y = np.meshgrid(x, y)
-Z1 = mlab.bivariate_normal(X, Y, 1.0, 1.0, 0.0, 0.0)
-Z2 = mlab.bivariate_normal(X, Y, 1.5, 0.5, 1, 1)
-Z = 10.0 * (Z2 - Z1)
+# Model next step.
+def model_next_step(t, x, y):
 
-# manual_locations = [(-1, -1.4), (-0.62, -0.7), (-2, 0.5),
-#                     (1.7, 1.2), (2.0, 1.4), (2.4, 1.7)]
+    t_arrival = random.expovariate(mu*x)
+    t_infection = random.expovariate(beta*x*y)
+    t_death = random.expovariate(gamma*y)
 
-line_colours = ('BlueViolet', 'Crimson', 'ForestGreen',
-        'Indigo', 'Tomato', 'Maroon')
+    if t_arrival <= t_infection and t_arrival <= t_death:
+        return (t+t_arrival, x+1, y)
+    elif t_infection <= t_death:
+        return (t+t_infection, x-1, y+1)
+    else:
+        return (t+t_death, x, y-1)
 
-line_widths = (1, 1.5, 2, 2.5, 3, 3.5)
 
-plt.figure()
-CS = plt.contour(X, Y, Z2, 10,                        # add 6 contour lines
-                 # linewidths=line_widths,            # line widths
-                 )             # line colours
+# Simulation of the model
+def simulate_model(_x0, _y0):
+    random.seed(time.time())
+    vt = np.array([0.])
+    vx = np.array([_x0])
+    vy = np.array([_y0])
 
-plt.clabel(CS, inline=1,                            # add labels
-          fontsize=10)                 # label locations
-plt.title('Contour Plot - customized lines')        # title
-plt.show()
+    (t, x, y) = model_next_step(vt[-1], vx[-1], vy[-1])
+    while x > 0 and y > 0 and t < 1:
+        vt = np.append(vt, t)
+        vx = np.append(vx, x)
+        vy = np.append(vy, y)
+        (t, x, y) = model_next_step(vt[-1], vx[-1], vy[-1])
+        # print((t, x, y))
+
+    return (vt, vx, vy)
+
+
+# Compute conserve quantity
+def f_cons_qty(x, y):
+    return beta * (x+y) - gamma*math.log(x) - mu*math.log(y)
+vf_cons_qty = np.vectorize(f_cons_qty)
+
+# Make a few simulations.
+nb = 1
+N = 100
+x0 = int(N * xstar)
+y0 = int(N * ystar)
