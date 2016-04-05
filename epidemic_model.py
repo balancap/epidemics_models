@@ -50,6 +50,18 @@ def simulate_model(_x0, _y0, mu, gamma, beta, seed=0):
     return (np.array(vt), np.array(vx), np.array(vy))
 
 
+# (Simple) simulation of the model
+@numba.jit(nopython=True)
+def simple_simulate_model(_x0, _y0, mu, gamma, beta, seed=0):
+    random.seed(int(seed))
+    (t, x, y) = (0., _x0, _y0)
+
+    while x > 0 and y > 0:
+        (t, x, y) = model_next_step(t, x, y, mu, gamma, beta)
+
+    return (t, x, y)
+
+
 # Compute conserve quantity
 @numba.vectorize([numba.float32(numba.float32, numba.float32),
                   numba.float64(numba.float64, numba.float64)])
